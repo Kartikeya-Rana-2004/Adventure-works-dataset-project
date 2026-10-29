@@ -1,0 +1,101 @@
+{
+  "name": "Pipeline_AdventureWorks_Medallion_ETL",
+  "properties": {
+    "description": "Production ADF pipeline orchestrating ADLS Gen2 ingestion, Databricks PySpark Medallion transforms, and Synapse Analytics Gold table serving.",
+    "activities": [
+      {
+        "name": "Copy_Raw_CSV_to_ADLS_Bronze",
+        "type": "Copy",
+        "typeProperties": {
+          "source": {
+            "type": "DelimitedTextSource",
+            "storeSettings": {
+              "type": "AzureBlobStorageReadSettings",
+              "recursive": true
+            },
+            "formatSettings": {
+              "type": "DelimitedTextReadSettings",
+              "skipLineCount": 0
+            }
+          },
+          "sink": {
+            "type": "DelimitedTextSink",
+            "storeSettings": {
+              "type": "AzureBlobFSWriteSettings"
+            },
+            "formatSettings": {
+              "type": "DelimitedTextWriteSettings",
+              "quoteAllText": true,
+              "fileExtension": ".csv"
+            }
+          },
+          "enableStaging": false
+        },
+        "inputs": [
+          {
+            "referenceName": "Source_OnPrem_Blob",
+            "type": "DatasetReference"
+          }
+        ],
+        "outputs": [
+          {
+            "referenceName": "ADLS_Gen2_Bronze_Landing",
+            "type": "DatasetReference"
+          }
+        ]
+      },
+      {
+        "name": "Execute_Databricks_Medallion_Notebook",
+        "type": "DatabricksNotebook",
+        "dependsOn": [
+          {
+            "activity": "Copy_Raw_CSV_to_ADLS_Bronze",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "notebookPath": "/Shared/AdventureWorks/databricks_pyspark_medallion_pipeline",
+          "baseParameters": {
+            "lakehouse_root": "abfss://lakehouse@adlsgen2dw.dfs.core.windows.net",
+            "environment": "production"
+          }
+        },
+        "linkedServiceName": {
+          "referenceName": "AzureDatabricks_HighConcurrency_Cluster",
+          "type": "LinkedServiceReference"
+        }
+      },
+      {
+        "name": "Trigger_dbt_Cloud_Validation_Gate",
+        "type": "WebActivity",
+        "dependsOn": [
+          {
+            "activity": "Execute_Databricks_Medallion_Notebook",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "url": "https://cloud.getdbt.com/api/v2/accounts/84920/jobs/192841/run/",
+          "method": "POST",
+          "headers": {
+            "Authorization": "Token {{dbt_api_token}}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "cause": "Triggered by Azure Data Factory Medallion Pipeline Run"
+          }
+        }
+      }
+    ],
+    "annotations": [
+      "Medallion",
+      "AzureDataFactory",
+      "Databricks",
+      "dbt"
+    ]
+  }
+}

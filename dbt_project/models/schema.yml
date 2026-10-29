@@ -1,0 +1,66 @@
+version: 2
+
+models:
+  - name: fct_sales
+    description: "Conformed Gold Fact table for sales transactions, partitioned by OrderDateKey."
+    columns:
+      - name: OrderNumber
+        description: "Unique sales order reference."
+        tests:
+          - not_null
+      - name: OrderLineItem
+        tests:
+          - not_null
+      - name: ProductKey
+        description: "Foreign key referencing dim_products."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_products')
+              field: ProductKey
+      - name: CustomerKey
+        description: "Foreign key referencing dim_customers."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_customers')
+              field: CustomerKey
+      - name: OrderQuantity
+        tests:
+          - not_null
+      - name: GrossRevenue
+        tests:
+          - not_null
+
+  - name: dim_customers
+    description: "Slowly Changing Dimension Type 2 (SCD2) for customer demographic and contact profiles."
+    columns:
+      - name: customer_sk
+        description: "Surrogate primary key."
+        tests:
+          - unique
+          - not_null
+      - name: CustomerKey
+        description: "Natural source key."
+        tests:
+          - not_null
+      - name: is_current
+        description: "SCD2 active record flag."
+        tests:
+          - not_null
+          - accepted_values:
+              values: [true, false]
+
+  - name: dim_products
+    description: "Denormalized product dimension containing categories, margins, and cost attributes."
+    columns:
+      - name: ProductKey
+        tests:
+          - unique
+          - not_null
+      - name: ProductCost
+        tests:
+          - not_null
+      - name: ProductPrice
+        tests:
+          - not_null

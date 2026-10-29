@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure Medallion Lakehouse | AdventureWorks Executive Analytics</title>
+  <meta name="description" content="End-to-End Azure Cloud Lakehouse (Databricks, PySpark, Azure Data Factory, dbt, ADLS Gen2, Synapse) by Kartikeya Rana.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            azure: {
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+            },
+            dark: {
+              950: '#06090f',
+              900: '#0c121e',
+              800: '#131b2c',
+              700: '#1b263e'
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #06090f;
+      color: #f3f4f6;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .glass-card {
+      background: rgba(12, 18, 30, 0.75);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card:hover {
+      border-color: rgba(14, 165, 233, 0.3);
+    }
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-azure-500 selection:text-white">
+
+  <!-- Top Announcement Bar -->
+  <div class="bg-gradient-to-r from-sky-950/80 via-dark-900 to-indigo-950/80 border-b border-sky-500/20 px-4 py-2 text-xs text-center text-sky-300 flex items-center justify-center gap-2">
+    <span class="inline-block w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+    <span><strong>Production Lakehouse Showcase:</strong> Azure Data Factory • Databricks PySpark • Delta Lake Medallion • dbt SCD Type 2</span>
+    <span class="hidden md:inline text-gray-600">•</span>
+    <a href="https://github.com/Kartikeya-Rana-2004/Adventure-works-dataset-project" target="_blank" class="underline hover:text-white font-semibold">View Source Repo →</a>
+  </div>
+
+  <!-- Header -->
+  <header class="glass-card border-b border-white/10 px-6 py-4 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center font-bold text-black text-xl shadow-lg shadow-sky-500/20">
+          <i class="fa-solid fa-layer-group"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold text-white tracking-tight">AdventureWorks Medallion Lakehouse</h1>
+            <span class="badge-pill bg-sky-500/15 text-sky-300 border border-sky-500/30">Azure Cloud</span>
+            <span class="badge-pill bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">dbt Tested</span>
+          </div>
+          <p class="text-xs text-gray-400">Databricks PySpark • ADLS Gen2 • Star Schema Dimensional Modeling • Synapse</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 text-xs">
+        <a href="https://kartikeya-rana-2004.github.io/engineering-portfolio/" target="_blank" class="px-3 py-1.5 rounded-lg bg-dark-800 hover:bg-dark-700 text-teal-300 border border-teal-500/30 font-semibold transition">
+          <i class="fa-solid fa-server mr-1"></i> Data Portfolio
+        </a>
+        <a href="https://kartikeya-rana-2004.github.io/market-trend-forecast/" target="_blank" class="px-3 py-1.5 rounded-lg bg-dark-800 hover:bg-dark-700 text-cyan-300 border border-cyan-500/30 font-semibold transition">
+          <i class="fa-solid fa-chart-line mr-1"></i> Market Engine
+        </a>
+        <a href="https://github.com/Kartikeya-Rana-2004" target="_blank" class="px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold transition shadow">
+          <i class="fa-brands fa-github mr-1"></i> GitHub Profile
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-6 py-8 w-full flex-1 space-y-6">
+
+    <!-- KPI Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="p-5 rounded-2xl glass-card">
+        <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Total Net Revenue</span>
+        <div id="kpi-revenue" class="text-3xl font-extrabold text-sky-400 font-mono mt-1">$24,914,582</div>
+        <span class="text-xs text-emerald-400 font-medium">+16.4% YoY Growth</span>
+      </div>
+      <div class="p-5 rounded-2xl glass-card">
+        <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Total Orders</span>
+        <div id="kpi-orders" class="text-3xl font-extrabold text-white font-mono mt-1">25,166</div>
+        <span class="text-xs text-gray-400">Across 18,148 customers</span>
+      </div>
+      <div class="p-5 rounded-2xl glass-card">
+        <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Average Order Value</span>
+        <div id="kpi-aov" class="text-3xl font-extrabold text-purple-400 font-mono mt-1">$989.98</div>
+        <span class="text-xs text-gray-400">41.8% Net Margin</span>
+      </div>
+      <div class="p-5 rounded-2xl glass-card">
+        <span class="text-xs text-gray-400 uppercase tracking-wider font-semibold">Overall Return Rate</span>
+        <div id="kpi-returns" class="text-3xl font-extrabold text-emerald-400 font-mono mt-1">2.14%</div>
+        <span class="text-xs text-emerald-400 font-medium">Within target SLA &lt; 3%</span>
+      </div>
+    </div>
+
+    <!-- Interactive Filter Controls -->
+    <div class="p-4 rounded-2xl glass-card flex flex-wrap items-center justify-between gap-4 text-xs">
+      <div class="flex items-center gap-3">
+        <span class="font-bold text-gray-300 uppercase tracking-wider"><i class="fa-solid fa-filter text-sky-400 mr-1.5"></i> Slice Data:</span>
+        <div class="flex gap-1.5">
+          <button onclick="setYear('all')" id="btn-year-all" class="px-3 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/40 font-semibold">All Years</button>
+          <button onclick="setYear('2017')" id="btn-year-2017" class="px-3 py-1.5 rounded-lg bg-dark-900 text-gray-400 hover:text-white border border-white/5 font-semibold">2017</button>
+          <button onclick="setYear('2016')" id="btn-year-2016" class="px-3 py-1.5 rounded-lg bg-dark-900 text-gray-400 hover:text-white border border-white/5 font-semibold">2016</button>
+          <button onclick="setYear('2015')" id="btn-year-2015" class="px-3 py-1.5 rounded-lg bg-dark-900 text-gray-400 hover:text-white border border-white/5 font-semibold">2015</button>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="badge-pill bg-emerald-500/15 text-emerald-300 font-mono">
+          <i class="fa-solid fa-check-double mr-1"></i> dbt Tests: 28/28 Passing
+        </span>
+        <span class="badge-pill bg-purple-500/15 text-purple-300 font-mono">
+          <i class="fa-solid fa-clock-rotate-left mr-1"></i> SCD Type 2 Active
+        </span>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Revenue Growth Trend -->
+      <div class="lg:col-span-8 p-5 rounded-2xl glass-card">
+        <h3 class="text-xs font-bold text-gray-300 mb-3 flex items-center justify-between">
+          <span>Monthly Revenue Trend ($ USD)</span>
+          <span class="text-[10px] text-sky-400 font-mono">fact_sales • Partitioned by OrderMonth</span>
+        </h3>
+        <div class="h-64">
+          <canvas id="revTrendChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Category Share Doughnut -->
+      <div class="lg:col-span-4 p-5 rounded-2xl glass-card">
+        <h3 class="text-xs font-bold text-gray-300 mb-3 flex items-center justify-between">
+          <span>Revenue by Category</span>
+          <span class="text-[10px] text-gray-400 font-mono">dim_products</span>
+        </h3>
+        <div class="h-64 flex items-center justify-center">
+          <canvas id="categoryChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Regional Performance & Top Products Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="lg:col-span-6 p-5 rounded-2xl glass-card">
+        <h3 class="text-xs font-bold text-gray-300 mb-3 flex items-center justify-between">
+          <span>Sales Volume by Territory Country</span>
+          <span class="text-[10px] text-gray-400 font-mono">dim_territories</span>
+        </h3>
+        <div class="h-60">
+          <canvas id="territoryChart"></canvas>
+        </div>
+      </div>
+
+      <div class="lg:col-span-6 p-5 rounded-2xl glass-card">
+        <h3 class="text-xs font-bold text-gray-300 mb-3 flex items-center justify-between">
+          <span>Top Margin Generating Products</span>
+          <span class="text-[10px] text-emerald-400 font-mono">Gold Analytical Mart</span>
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs font-mono">
+            <thead class="bg-dark-950 text-gray-400 border-b border-white/10">
+              <tr>
+                <th class="p-2.5">Product Name</th>
+                <th class="p-2.5">Category</th>
+                <th class="p-2.5">Units</th>
+                <th class="p-2.5">Unit Margin</th>
+                <th class="p-2.5">Net Profit</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/5 text-[11px]">
+              <tr>
+                <td class="p-2.5 text-white font-semibold">Mountain-200 Black, 38</td>
+                <td class="p-2.5 text-gray-400">Bikes</td>
+                <td class="p-2.5 text-gray-300">1,382</td>
+                <td class="p-2.5 text-emerald-400 font-bold">$1,048.24</td>
+                <td class="p-2.5 text-sky-400 font-bold">$1,448,667</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 text-white font-semibold">Road-150 Red, 48</td>
+                <td class="p-2.5 text-gray-400">Bikes</td>
+                <td class="p-2.5 text-gray-300">1,120</td>
+                <td class="p-2.5 text-emerald-400 font-bold">$1,398.50</td>
+                <td class="p-2.5 text-sky-400 font-bold">$1,566,320</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 text-white font-semibold">Sport-100 Helmet, Red</td>
+                <td class="p-2.5 text-gray-400">Accessories</td>
+                <td class="p-2.5 text-gray-300">3,492</td>
+                <td class="p-2.5 text-emerald-400 font-bold">$20.91</td>
+                <td class="p-2.5 text-sky-400 font-bold">$73,017</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 text-white font-semibold">Touring-1000 Blue, 54</td>
+                <td class="p-2.5 text-gray-400">Bikes</td>
+                <td class="p-2.5 text-gray-300">764</td>
+                <td class="p-2.5 text-emerald-400 font-bold">$901.40</td>
+                <td class="p-2.5 text-sky-400 font-bold">$688,670</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3-Tier Medallion Architecture Breakdown -->
+    <div class="p-6 rounded-2xl glass-card">
+      <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-diagram-project text-sky-400"></i> Azure Databricks Medallion Architecture Pipeline
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div class="p-4 rounded-xl bg-dark-950 border border-white/5">
+          <div class="font-bold text-amber-400 mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-cube"></i> Bronze Layer (Raw Ingestion)
+          </div>
+          <p class="text-gray-400 leading-relaxed">
+            ADLS Gen2 landing zone. Ingests raw CSV and JSON drops with automated schema inference, attaching ingestion timestamp metadata (<code>_ingested_at</code>, <code>_source_file</code>, <code>_batch_id</code>) for immutable lineage tracking.
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-dark-950 border border-white/5">
+          <div class="font-bold text-sky-400 mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-cubes"></i> Silver Layer (SCD Type 2 & Conforming)
+          </div>
+          <p class="text-gray-400 leading-relaxed">
+            Cleansed Delta Lake tables. Eliminates duplicate keys, handles null values, conforms product taxonomies, and tracks historical changes in customer demographic attributes using Slowly Changing Dimension Type 2 (<code>valid_from</code>, <code>valid_to</code>, <code>is_current</code>).
+          </p>
+        </div>
+        <div class="p-4 rounded-xl bg-dark-950 border border-white/5">
+          <div class="font-bold text-emerald-400 mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-chart-line"></i> Gold Layer (Star Schema & Marts)
+          </div>
+          <p class="text-gray-400 leading-relaxed">
+            Production Star Schema modeled with dbt. Partitions <code>fct_sales</code> by year and month. Pre-computes dimensional views for executive analytics, customer lifetime value (LTV), and Synapse / Power BI direct queries.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-auto border-t border-white/10 glass-card py-6 px-6 text-xs text-gray-400">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div>
+        <p class="font-bold text-gray-200">Kartikeya Rana • Azure Cloud Lakehouse Architect</p>
+        <p class="text-gray-500 mt-0.5">Penn State University Applied Data Science '26 • Databricks & dbt Specialist</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="https://github.com/Kartikeya-Rana-2004/Adventure-works-dataset-project" target="_blank" class="hover:text-white transition">Repository</a>
+        <a href="https://kartikeya-rana-2004.github.io/engineering-portfolio/" target="_blank" class="hover:text-white transition">Data Portfolio</a>
+        <a href="https://linkedin.com/in/kartikeyarana2004" target="_blank" class="hover:text-white transition">LinkedIn</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    let trendChart = null;
+    let catChart = null;
+    let terrChart = null;
+
+    function initCharts() {
+      // Monthly Trend Chart
+      const tCtx = document.getElementById('revTrendChart').getContext('2d');
+      trendChart = new Chart(tCtx, {
+        type: 'line',
+        data: {
+          labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+          datasets: [{
+            label: 'Net Revenue ($)',
+            data: [1420000, 1610000, 1890000, 1780000, 2150000, 2480000, 2320000, 2690000, 2540000, 2810000, 3120000, 3414582],
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+            fill: true,
+            tension: 0.35,
+            borderWidth: 2.5,
+            pointBackgroundColor: '#0284c7'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 10 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 10 } } }
+          }
+        }
+      });
+
+      // Category Share Doughnut
+      const cCtx = document.getElementById('categoryChart').getContext('2d');
+      catChart = new Chart(cCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Bikes', 'Accessories', 'Clothing', 'Components'],
+          datasets: [{
+            data: [21450000, 1890000, 1254582, 320000],
+            backgroundColor: ['#0ea5e9', '#10b981', '#8b5cf6', '#f59e0b'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 9 }, boxWidth: 10 } }
+          }
+        }
+      });
+
+      // Territory Bar Chart
+      const rCtx = document.getElementById('territoryChart').getContext('2d');
+      terrChart = new Chart(rCtx, {
+        type: 'bar',
+        data: {
+          labels: ['United States', 'Australia', 'United Kingdom', 'Germany', 'France', 'Canada'],
+          datasets: [{
+            label: 'Revenue ($M)',
+            data: [9.8, 5.2, 3.8, 2.7, 2.1, 1.3],
+            backgroundColor: 'rgba(14, 165, 233, 0.7)',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 10 } } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function setYear(year) {
+      document.querySelectorAll('[id^="btn-year-"]').forEach(b => {
+        b.className = 'px-3 py-1.5 rounded-lg bg-dark-900 text-gray-400 hover:text-white border border-white/5 font-semibold';
+      });
+      document.getElementById('btn-year-' + year).className = 'px-3 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 border border-sky-500/40 font-semibold';
+
+      const revEl = document.getElementById('kpi-revenue');
+      const ordEl = document.getElementById('kpi-orders');
+
+      if (year === '2017') {
+        revEl.innerText = '$14,820,190';
+        ordEl.innerText = '14,890';
+        trendChart.data.datasets[0].data = [950000, 1100000, 1250000, 1180000, 1390000, 1620000, 1540000, 1780000, 1690000, 1850000, 2020000, 2250190];
+      } else if (year === '2016') {
+        revEl.innerText = '$8,421,900';
+        ordEl.innerText = '8,410';
+        trendChart.data.datasets[0].data = [510000, 580000, 640000, 610000, 720000, 810000, 790000, 890000, 840000, 920000, 1020000, 1091900];
+      } else if (year === '2015') {
+        revEl.innerText = '$1,672,492';
+        ordEl.innerText = '1,866';
+        trendChart.data.datasets[0].data = [90000, 110000, 120000, 115000, 140000, 160000, 155000, 180000, 175000, 195000, 210000, 217492];
+      } else {
+        revEl.innerText = '$24,914,582';
+        ordEl.innerText = '25,166';
+        trendChart.data.datasets[0].data = [1420000, 1610000, 1890000, 1780000, 2150000, 2480000, 2320000, 2690000, 2540000, 2810000, 3120000, 3414582];
+      }
+      trendChart.update();
+    }
+
+    window.addEventListener('DOMContentLoaded', initCharts);
+  </script>
+</body>
+</html>
